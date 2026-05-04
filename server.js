@@ -5,11 +5,16 @@ const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const { body, validationResult } = require('express-validator');
 const Groq = require('groq-sdk');
+const { createClient } = require('@supabase/supabase-js');
 
 dotenv.config();
 
 const app = express();
 const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+);
 
 app.use(helmet());
 app.use(cors());
@@ -64,6 +69,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'Factwise backend is running' });
 });
 
+// ─── Verify Route ─────────────────────────────────────────────────────────────
 app.post('/api/verify', freeTierLimiter, verifyValidation, async (req, res) => {
 
   const errors = validationResult(req);
@@ -72,6 +78,7 @@ app.post('/api/verify', freeTierLimiter, verifyValidation, async (req, res) => {
   }
 
   const text = sanitizeText(req.body.text);
+  const userId = req.body.userId || null;
 
   if (!text || text.length === 0) {
     return res.status(400).json({ error: 'Text became empty after sanitization. Please try again.' });
@@ -127,11 +134,53 @@ ${text}`
       return res.status(500).json({ error: 'Incomplete verification result. Please try again.' });
     }
 
+    // ─── Save to Supabase if user is logged in ────────────────────────────────
+    if (userId) {
+      try {
+        await supabase.from('verifications').insert({
+          user_id: userId,
+          input_text: text,
+          overall: result.overall,
+          summary: result.summary,
+          claims: result.claims,
+          tip: result.tip,
+        });
+      } catch (dbError) {
+        console.error('DB save error:', dbError.message);
+        // Don't fail the request if DB save fails
+      }
+    }
+
     res.json({ success: true, result });
 
   } catch (error) {
     console.error('Verification error:', error.message);
     res.status(500).json({ error: 'Verification failed. Please try again in a moment.' });
+  }
+});
+
+// ─── Get verification history for a user ─────────────────────────────────────
+app.get('/api/history/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  if (!userId) {
+    return res.status(400).json({ error: 'User ID required' });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('verifications')
+      .select('id, overall, summary, input_text, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    if (error) throw error;
+
+    res.json({ success: true, history: data });
+  } catch (error) {
+    console.error('History error:', error.message);
+    res.status(500).json({ error: 'Could not fetch history. Please try again.' });
   }
 });
 
