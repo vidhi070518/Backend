@@ -3,7 +3,6 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
-app.set('trust proxy', 1);
 const { body, validationResult } = require('express-validator');
 const Groq = require('groq-sdk');
 const { createClient } = require('@supabase/supabase-js');
@@ -11,6 +10,7 @@ const { createClient } = require('@supabase/supabase-js');
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1);
 const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
 const supabase = createClient(
   process.env.SUPABASE_URL,
