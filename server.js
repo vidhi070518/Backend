@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
+app.set('trust proxy', 1);
 const { body, validationResult } = require('express-validator');
 const Groq = require('groq-sdk');
 const { createClient } = require('@supabase/supabase-js');
