@@ -24,10 +24,10 @@ app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 const freeTierLimiter = rateLimit({
   windowMs: 24 * 60 * 60 * 1000,
-  max: 10,
+  max: 3,
   message: {
     error: 'Free tier limit reached',
-    message: 'You have used all 10 free verifications today. Upgrade to Pro for unlimited access.'
+    message: 'You have used all 3 free verifications today. Upgrade to Pro for unlimited access.'
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -38,7 +38,7 @@ const globalLimiter = rateLimit({
   max: 100,
   message: {
     error: 'Too many requests',
-    message: 'Too many requests from this IP. Please wait 15 minutes and try again.'
+    message: 'Too many requests from this IP. Please wait 5 minutes and try again.'
   },
   standardHeaders: true,
   legacyHeaders: false,
